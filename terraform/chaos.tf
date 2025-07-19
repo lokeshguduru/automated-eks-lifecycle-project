@@ -19,9 +19,24 @@ resource "aws_iam_role" "fis_role" {
 }
 
 # 2. Attach the necessary policy to the role
-resource "aws_iam_role_policy_attachment" "fis_ec2_access" {
-  role       = aws_iam_role.fis_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AWSFaultInjectionSimulatorEC2Access"
+resource "aws_iam_role_policy" "fis_policy" {
+  name = "${var.project_name}-fis-permissions"
+  role = aws_iam_role.fis_role.id
+
+  # This policy grants the exact permissions needed for the experiment
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "ec2:DescribeInstances",
+          "ec2:TerminateInstances"
+        ],
+        Resource = "*"
+      },
+    ]
+  })
 }
 
 # 3. Define the Chaos Experiment Template
@@ -39,13 +54,13 @@ resource "aws_fis_experiment_template" "terminate_eks_node" {
     }
   }
 
-  # Define the target resources for the action
+  # Define the target resources for the action using the correct syntax
   target {
     name           = "eks_nodes"
     resource_type  = "aws:ec2:instance"
     selection_mode = "COUNT(1)"
 
-    # This filter selects running instances that have the correct cluster tag.
+    # Use a 'filters' block to select resources based on their tags and state.
     filter {
       path   = "State.Name"
       values = ["running"]

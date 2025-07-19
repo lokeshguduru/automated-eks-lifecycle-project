@@ -1,8 +1,9 @@
+# terraform/main.tf
+
 terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      # This version constraint ensures compatibility with the EKS module
       version = "~> 5.0"
     }
   }
@@ -39,6 +40,7 @@ module "vpc" {
   }
 }
 
+# EKS Cluster Module
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "20.8.4"
@@ -48,6 +50,10 @@ module "eks" {
 
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
+
+  # We only need to enable the OIDC provider here.
+  # The role itself is now created in lbc_iam_role.tf
+  enable_irsa = true
 
   eks_managed_node_group_defaults = {
     ami_type = "AL2_x86_64"
